@@ -40,8 +40,11 @@ if uploaded_file is not None:
     st.text("Schema detected:")
     st.code(schema)
 
-    question = st.text_input("Ask a question about this data")
-    if question:
+    with st.form(key="question_form", clear_on_submit=True):
+        question = st.text_input("Ask a question about this data")
+        submitted = st.form_submit_button("Ask")
+
+    if submitted and question:
         response = answer_question(df, schema, question)
         st.session_state.history.append(response)
 
