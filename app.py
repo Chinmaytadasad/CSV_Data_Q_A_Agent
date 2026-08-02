@@ -28,6 +28,9 @@ def _load_uploaded_csv(uploaded_file) -> object:
 
 st.title("CSV / Data Q&A Agent")
 
+if "history" not in st.session_state:
+    st.session_state.history = []
+
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
 if uploaded_file is not None:
@@ -40,18 +43,22 @@ if uploaded_file is not None:
     question = st.text_input("Ask a question about this data")
     if question:
         response = answer_question(df, schema, question)
-        st.subheader("Answer")
-        if isinstance(response.result, pd.DataFrame):
-            display_df = response.result.copy()
-            for column in display_df.columns:
-                if display_df[column].dtype == "object":
-                    display_df[column] = display_df[column].astype(str)
-            st.dataframe(display_df)
-        elif isinstance(response.result, pd.Series):
-            st.dataframe(response.result.to_frame(name="value"))
-        else:
-            st.write(response.result)
-        st.subheader("Code used")
-        st.code(response.code, language="python")
-        if not response.success:
-            st.error(response.error_note)
+        st.session_state.history.append(response)
+
+        for response in reversed(st.session_state.history):
+            st.subheader(f"Q: {response.question}")
+            if isinstance(response.result, pd.DataFrame):
+                display_df = response.result.copy()
+                for column in display_df.columns:
+                    if display_df[column].dtype == "object":
+                        display_df[column] = display_df[column].astype(str)
+                st.dataframe(display_df)
+            elif isinstance(response.result, pd.Series):
+                st.dataframe(response.result.to_frame(name="value"))
+            else:
+                st.write(response.result)
+            st.subheader("Code used")
+            st.code(response.code, language="python")
+            if not response.success:
+                st.error(response.error_note)
+            st.divider()
