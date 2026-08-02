@@ -33,9 +33,16 @@ If the generated code fails (syntax error, missing column, runtime exception), t
 
 **7. No output truncation for accidental non-command input.** Early testing showed that a mistyped exit command (e.g. "uit" instead of "quit") was not recognized as an exit and was forwarded to the LLM as a genuine question, which produced a full unfiltered dump of the dataset with derived columns. This surfaced a broader point: any unrecognized input falls through to the LLM rather than being validated first, which is by design (keeps the agent flexible) but means malformed input can produce large, unhelpful output rather than a clean rejection.
 
+**8. Schema context hid the real value type of `object`-dtype columns (found, root-caused, and fixed).** Tested against a real-world Kaggle retail dataset (not just the bundled synthetic data), the question "How many transactions had a discount applied?" returned `0` — silently wrong, with no error at any stage. Root cause: the `Discount Applied` column loads as `object` dtype, but its actual non-null values are Python `bool` (`True`/`False`), not strings. The schema context reported only the dtype label `object`, giving the model no signal that the values inside were booleans rather than strings; it reasonably generated `df['Discount Applied'].eq('True')`, comparing a real `True` against the string `'True'`, which is never equal — silently returning 0 for every row. Both sanitization and execution succeeded, so nothing in the pipeline flagged this as a failure; it was a logically wrong answer presented with full confidence.
+
+This is the clearest evidence in this project that "the code executed successfully" is a necessary but not sufficient guarantee of correctness — execution-only truth prevents the model from *stating* a wrong number, but doesn't prevent it from *computing* one if it misjudges what a column actually contains.
+
+**Fix:** `build_schema_context()` was updated to sample the actual Python types of non-null values within `object`-dtype columns, and report that instead of the bare dtype label — e.g. `"object (boolean values: True/False, use == True/False, not string comparison)"` rather than just `"object"`. After the fix, the same question generated `df['Discount Applied'].sum()` (a valid boolean-sum idiom) and returned the correct answer, `4219`, verified against a direct `(df['Discount Applied'] == True).sum()` check. The fix was regression-tested against the original synthetic dataset with no change in behavior for existing questions.
+
 ## What I'd Improve With More Time
 - Separate the "answerable vs. not" classification into a deterministic step, independent of code generation
 - Post-process multi-part questions to explicitly request structured (labeled DataFrame/dict) output
 - Replace the string-blocklist sandbox with real process/container isolation
 - Standardize not-found-entity handling to always attempt the filter rather than refuse based on question phrasing
 - Add automated regression tests covering the specific edge cases found during manual testing (namespace bug, UNANSWERABLE over-triggering, compound-question non-determinism)
+- Extend the object-column type-sampling approach (added for booleans) to also flag numeric-looking strings, mixed date formats, and other common real-world dtype mismatches beyond the one case found here
