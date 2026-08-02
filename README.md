@@ -1,0 +1,1 @@
+My agent takes a CSV/Excel file and a plain-English question, and produces a computed numeric/tabular answer with the exact pandas code that produced it.

@@ -1,0 +1,7 @@
+pandas
+# Choose one provider SDK
+# groq
+# anthropic
+python-dotenv
+tabulate
+streamlit
