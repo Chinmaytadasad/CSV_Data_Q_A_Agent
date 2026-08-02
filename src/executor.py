@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+
 import pandas as pd
 
 
@@ -36,15 +38,19 @@ def sanitize(code: str) -> str:
 def execute(code: str, df: pd.DataFrame):
     """Execute sanitized code in a restricted namespace and return the result."""
     sanitized_code = sanitize(code)
-    restricted_globals = {"pd": pd, "__builtins__": {} }
-    restricted_locals = {"df": df.copy()}
+    try:
+        ast.parse(sanitized_code)
+    except SyntaxError as exc:
+        raise SyntaxError(f"Invalid Python syntax: {exc.msg}") from exc
+
+    namespace = {"pd": pd, "df": df.copy(), "__builtins__": {}}
 
     try:
-        exec(sanitized_code, restricted_globals, restricted_locals)
+        exec(sanitized_code, namespace, namespace)
     except Exception:
         raise
 
-    if "result" not in restricted_locals:
-        raise NameError("Executed code did not define a result variable")
+    if "result" not in namespace:
+        raise ValueError("Executed code did not define a result variable")
 
-    return restricted_locals["result"]
+    return namespace["result"]
