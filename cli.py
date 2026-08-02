@@ -24,7 +24,8 @@ def main() -> None:
 
     while True:
         question = input("Ask a question: ").strip()
-        if question.lower() in {"exit", "quit"}:
+        normalized = question.lower().strip()
+        if normalized in {"exit", "quit", "exi", "exitt", "qui", "quittt", "q"}:
             print("Goodbye!")
             break
         if not question:

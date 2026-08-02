@@ -29,6 +29,16 @@ def answer_question(df, schema, question) -> AgentResponse:
     try:
         sanitize(code)
         result = execute(code, df)
+        if isinstance(result, str) and result.startswith("UNANSWERABLE"):
+            return AgentResponse(
+                question=question,
+                code=code,
+                result=None,
+                success=False,
+                attempts=attempts,
+                error_note=result,
+            )
+
         return AgentResponse(
             question=question,
             code=code,
@@ -45,6 +55,16 @@ def answer_question(df, schema, question) -> AgentResponse:
         try:
             sanitize(repaired_code)
             result = execute(repaired_code, df)
+            if isinstance(result, str) and result.startswith("UNANSWERABLE"):
+                return AgentResponse(
+                    question=question,
+                    code=repaired_code,
+                    result=None,
+                    success=False,
+                    attempts=attempts,
+                    error_note=result,
+                )
+
             return AgentResponse(
                 question=question,
                 code=repaired_code,
