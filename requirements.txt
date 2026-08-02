@@ -1,7 +1,6 @@
 pandas
-# Choose one provider SDK
-# groq
-# anthropic
+groq
+
 python-dotenv
 tabulate
 streamlit
